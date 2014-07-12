@@ -1,3 +1,5 @@
+require 'debugger'
+
 class Hangman
 
   def initialize(guessing_player, checking_player)
@@ -6,13 +8,39 @@ class Hangman
   end
 
   def play
-    show_blank_word
-    while show_word.any
+    puts "Welcome to Hangman!"
+
+    @checking_player.pick_secret_word
+    p @checking_player.secret_word
+
+    while @checking_player.completed_word.any? {|x| x == '_'} && @checking_player.wrong_guesses < 5
+      p @checking_player.completed_word
+
+      guess = @guessing_player.guess
+
+      if guess.length > 1
+        break if @checking_player.right_word?(guess)
+      end
+
+      @checking_player.wrong_guess?(guess)
+      @checking_player.check_guess(guess)
+
+      break if won?
+      puts "You have #{@checking_player.wrong_guesses} wrong guesses."
+    end
+
+    if @checking_player.wrong_guesses == 5
+      puts "You lose.  So sorry."
+    else
+      puts "You win! Thank you for playing Hangman!"
     end
   end
 
-  def show_word
+  def won?
+    false
+    return true if @checking_player.completed_word.none? {|x| x == '_'}
   end
+
 end
 
 class HumanPlayer
@@ -34,29 +62,51 @@ class HumanPlayer
   end
 
   def guess
-    puts "Guess a letter: "
-    letter = gets.chomp
+    puts "Guess a letter (or the word if you know it!): "
+    gets.chomp
   end
 
   def check_guess(letter)
   end
 
-  def handle_guess_response
+  def wrong_guess?(letter)
+    false
+    if secret_word.split(//).none? {|x| x == letter}
+      puts "Bad form, Peter."
+      @wrong_guesses += 1
+      return true
+    end
   end
 
-  def completed_word
+  def right_word?(guess)
+    true
+    if guess != @secret_word
+      puts "Sorry! Wrong word."
+      false
+    end
+  end
+
+  def handle_guess_response(letter,index)
+    @completed_word[index] = letter
+  end
+
+  def make_blank_board
+    @length.times do
+      @completed_word << "_"
+    end
   end
 
 end
 
 class ComputerPlayer
 
-  attr_reader :secret_word, :length, :completed_word
+  attr_reader :secret_word, :length, :completed_word, :wrong_guesses
 
   def initialize
     @secret_word = ''
     @length = 0
     @completed_word = []
+    @wrong_guesses = 0
   end
 
   def pick_secret_word
@@ -65,6 +115,8 @@ class ComputerPlayer
       x.chomp!
     end
     @secret_word = dictionary.sample
+    receive_secret_length
+    make_blank_board
   end
 
   def receive_secret_length
@@ -72,22 +124,43 @@ class ComputerPlayer
   end
 
   def guess
+    alphabet = ("a".."z").to_a
   end
 
-  def check_guess(letter)
-    secret_word.split.each_with_index do |x,idx|
-      if x == letter
-        @completed_word[idx] = letter
+  def check_guess(guess)
+    secret_word.split(//).each_with_index do |x,idx|
+      if x == guess
+        handle_guess_response(guess,idx)
       end
     end
   end
 
-  def handle_guess_response
+  def wrong_guess?(letter)
+    false
+    if secret_word.split(//).none? {|x| x == letter}
+      puts "Bad form, Peter."
+      @wrong_guesses += 1
+      return true
+    end
   end
 
-  def completed_word
+  def right_word?(guess)
+    true
+    if guess != @secret_word
+      puts "Sorry! Wrong word."
+      false
+    end
   end
 
+  def handle_guess_response(letter,index)
+    @completed_word[index] = letter
+  end
+
+  def make_blank_board
+    @length.times do
+      @completed_word << "_"
+    end
+  end
 end
 
 if __FILE__ == $PROGRAM_NAME
