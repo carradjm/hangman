@@ -18,11 +18,8 @@ class Hangman
 
       guess = @guessing_player.guess
 
-      if guess.length > 1
-        break if @checking_player.right_word?(guess)
-      end
+      break if guess == @checking_player.secret_word
 
-      @checking_player.wrong_guess?(guess)
       @checking_player.check_guess(guess)
 
       break if won?
@@ -41,6 +38,8 @@ class Hangman
     return true if @checking_player.completed_word.none? {|x| x == '_'}
   end
 
+
+
 end
 
 class HumanPlayer
@@ -55,10 +54,12 @@ class HumanPlayer
 
   def pick_secret_word
     puts "How long is your secret word?"
-    @length = gets.to_i
+    length = gets.to_i
+    make_blank_board(length)
   end
 
   def receive_secret_length
+
   end
 
   def guess
@@ -67,15 +68,28 @@ class HumanPlayer
   end
 
   def check_guess(letter)
+    letter.downcase!
+
+    puts "Correct guess by other player?"
+    answer = gets.chomp
+
+    if answer.downcase == 'y'
+      puts "Please place the letters in their correct positions and type DONE when finished."
+      response = ''
+      loop do
+        response = gets.chomp
+        break if response.downcase == "done"
+        index = response.to_i - 1
+        @completed_word[index] = letter
+      end
+    else
+      wrong_guess
+    end
   end
 
-  def wrong_guess?(letter)
-    false
-    if secret_word.split(//).none? {|x| x == letter}
-      puts "Bad form, Peter."
-      @wrong_guesses += 1
-      return true
-    end
+  def wrong_guess
+    @wrong_guesses += 1
+    puts "Stupid computer."
   end
 
   def right_word?(guess)
@@ -90,8 +104,8 @@ class HumanPlayer
     @completed_word[index] = letter
   end
 
-  def make_blank_board
-    @length.times do
+  def make_blank_board(length)
+    length.times do
       @completed_word << "_"
     end
   end
@@ -104,30 +118,42 @@ class ComputerPlayer
 
   def initialize
     @secret_word = ''
-    @length = 0
     @completed_word = []
     @wrong_guesses = 0
+    @alphabet = ("a".."z").to_a
   end
 
   def pick_secret_word
     dictionary = File.readlines('dictionary.txt')
+
     dictionary.each do |x|
       x.chomp!
     end
+
     @secret_word = dictionary.sample
+
     receive_secret_length
+
     make_blank_board
   end
 
   def receive_secret_length
-    @length = @secret_word.length
+    #receive how long the other player's secret word is so
+    #the computer can guess intelligently
   end
 
   def guess
-    alphabet = ("a".."z").to_a
+    guess = alphabet.sample
+
+    alphabet.delete(guess)
+
+    puts guess
+
+    guess
   end
 
   def check_guess(guess)
+    return if wrong_guess?(guess)
     secret_word.split(//).each_with_index do |x,idx|
       if x == guess
         handle_guess_response(guess,idx)
@@ -138,7 +164,7 @@ class ComputerPlayer
   def wrong_guess?(letter)
     false
     if secret_word.split(//).none? {|x| x == letter}
-      puts "Bad form, Peter."
+      puts "Bad form, Peter. Guess again"
       @wrong_guesses += 1
       return true
     end
@@ -154,13 +180,15 @@ class ComputerPlayer
 
   def handle_guess_response(letter,index)
     @completed_word[index] = letter
+    puts "Correct!"
   end
 
   def make_blank_board
-    @length.times do
+    @secret_word.length.times do
       @completed_word << "_"
     end
   end
+
 end
 
 if __FILE__ == $PROGRAM_NAME
